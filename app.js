@@ -1,33 +1,33 @@
 const express = require('express');
 const path = require('path');
+const dotenv = require('dotenv');
+const cookieParser = require('cookie-parser');
+
 const userRouter = require('./routes/user.routes');
 const mainRouter = require('./routes/main.routes');
-
-const dotenv = require('dotenv');
-dotenv.config();
 const connectToDB = require('./config/db');
+
+dotenv.config();
 connectToDB();
-const cookieParser = require('cookie-parser');
 
 const app = express();
 
+// Log model directory being served (debugging)
+console.log('Serving models from:', path.join(__dirname, 'public/models'));
+
+// Middleware
 app.use(express.static('public'));
-
-// Serve models folder statically for face-api.js
 app.use('/models', express.static(path.join(__dirname, 'public/models')));
-
 app.set('view engine', 'ejs');
 app.use(express.json());
 app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 
+// Routers
 app.use('/user', userRouter);
 app.use('/', mainRouter);
 
-app.get('/test-model', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public/models/tiny-face-detector/tiny_face_detector_model-weights_manifest.json'));
-});
-
+// Start server
 app.listen(3000, () => {
   console.log('Server is running on port 3000');
 });

@@ -15,7 +15,7 @@
         <span>⚪ Idle Time: <span id="idle-time">0s</span></span>
       </div>
       <div class="camera-preview">
-        <video id="webcam" autoplay muted></video>
+        <video id="webcam" autoplay muted width="160" height="120"></video>
       </div>
     </nav>
 
@@ -33,51 +33,48 @@
     </div>
 
     <script>
-  // Setup webcam preview
-  const video = document.getElementById("webcam");
-  navigator.mediaDevices
-    .getUserMedia({ video: true })
-    .then((stream) => {
-      video.srcObject = stream;
-    })
-    .catch(console.error);
-</script>
-
-
-    <script>
-  window.onload = async function () {
-    console.log("Loading face-api model...");
-    await faceapi.nets.tinyFaceDetector.loadFromUri('/models/tiny-face-detector');
-    console.log("Model loaded");
-
-    const webcam = document.getElementById('webcam');
-
-    // Wait for webcam to load video
-    webcam.addEventListener("loadeddata", () => {
-      const displaySize = { width: webcam.videoWidth, height: webcam.videoHeight };
-
+      // === Global active/idle timers ===
       let activeSeconds = 0;
       let idleSeconds = 0;
 
-      setInterval(async () => {
-        const detections = await faceapi.detectAllFaces(webcam, new faceapi.TinyFaceDetectorOptions());
+      document.addEventListener("DOMContentLoaded", async () => {
+        console.log("Loading face-api model...");
+        await faceapi.nets.tinyFaceDetector.loadFromUri("/models/tiny-face-detector");
+        console.log("Model loaded");
 
-        if (detections.length > 0) {
-          activeSeconds++;
-        } else {
-          idleSeconds++;
-        }
+        const webcam = document.getElementById("webcam");
 
-        document.getElementById("active-time").textContent = activeSeconds + "s";
-        document.getElementById("idle-time").textContent = idleSeconds + "s";
-      }, 1000);
-    });
-  };
-</script>
+        // Setup webcam stream
+        navigator.mediaDevices
+          .getUserMedia({ video: true })
+          .then((stream) => {
+            webcam.srcObject = stream;
+          })
+          .catch(console.error);
 
+        // Start detection once webcam video is loaded
+        webcam.addEventListener("loadeddata", () => {
+          setInterval(async () => {
+            const detections = await faceapi.detectAllFaces(
+              webcam,
+              new faceapi.TinyFaceDetectorOptions()
+            );
 
+            if (detections.length > 0) {
+              activeSeconds++;
+            } else {
+              idleSeconds++;
+            }
+
+            document.getElementById("active-time").textContent = activeSeconds + "s";
+            document.getElementById("idle-time").textContent = idleSeconds + "s";
+          }, 1000);
+        });
+      });
+    </script>
 
     <script>
+      // User data from backend
       const initialCompleted = <%= userData.completedVideos || 0 %>;
       const initialActiveTime = <%= userData.activeTime || 0 %>;
       const initialIdleTime = <%= userData.idleTime || 0 %>;
@@ -116,7 +113,7 @@
             card.innerHTML = `
               <div class="video-thumb">
                 <img src="${thumbnail}" alt="${title}">
-                <div class="duration">--:--</div> <!-- Placeholder, we’ll update -->
+                <div class="duration">--:--</div> <!-- Placeholder, updated later -->
               </div>
               <div class="video-info">
                 <h4>${title}</h4>
@@ -130,20 +127,20 @@
             }
 
             if (index <= previouslyCompleted) {
-card.onclick = () => loadVideo(videoId);
-} else {
-card.classList.add("locked");
-card.style.opacity = "0.6";
-card.style.cursor = "not-allowed";
-const lockIcon = document.createElement("div");
-lockIcon.innerHTML = "🔒 Locked";
-lockIcon.style.textAlign = "center";
-card.appendChild(lockIcon);
-}
+              card.onclick = () => loadVideo(videoId);
+            } else {
+              card.classList.add("locked");
+              card.style.opacity = "0.6";
+              card.style.cursor = "not-allowed";
+              const lockIcon = document.createElement("div");
+              lockIcon.innerHTML = "🔒 Locked";
+              lockIcon.style.textAlign = "center";
+              card.appendChild(lockIcon);
+            }
             videoListPane.appendChild(card);
           });
 
-          // After DOM is ready, fetch durations
+          // Fetch durations after cards rendered
           fetchVideoDurations(data.items.map((item) => item.snippet.resourceId.videoId));
         } catch (err) {
           console.error("Failed to fetch videos:", err);
@@ -158,20 +155,17 @@ card.appendChild(lockIcon);
           </iframe>
         `;
 
-        // Wait for iframe to load, then control playback
         setTimeout(() => {
           const iframe = document.getElementById("yt-player");
           const player = new YT.Player(iframe, {
             events: {
               onReady: (event) => {
                 event.target.playVideo();
-
-                // Disable skip by tracking time (coming next step)
               },
               onStateChange: (event) => {
                 if (event.data === YT.PlayerState.ENDED) {
                   markCompleted(videoId);
-                  sendTimeUpdate(); // Send time update when video ends
+                  sendTimeUpdate();
                 }
               },
             },
@@ -180,47 +174,42 @@ card.appendChild(lockIcon);
       }
 
       function markCompleted(videoId) {
-  if (!completedVideos.has(videoId)) {
-    completedVideos.add(videoId);
+        if (!completedVideos.has(videoId)) {
+          completedVideos.add(videoId);
 
-    // ✅ Style current card as completed
-    const card = document.getElementById(`video-${videoId}`);
-    if (card) {
-      card.style.borderLeft = "5px solid green";
-      card.style.backgroundColor = "#e8f5e9";
-    }
+          const card = document.getElementById(`video-${videoId}`);
+          if (card) {
+            card.style.borderLeft = "5px solid green";
+            card.style.backgroundColor = "#e8f5e9";
+          }
 
-    // ✅ Find index of current video in the list
-    const index = allVideos.findIndex(
-      (v) => v.snippet.resourceId.videoId === videoId
-    );
+          const index = allVideos.findIndex(
+            (v) => v.snippet.resourceId.videoId === videoId
+          );
 
-    // ✅ Unlock the next video
-    const next = allVideos[index + 1];
-    if (next) {
-      const nextId = next.snippet.resourceId.videoId;
-      const nextCard = document.getElementById(`video-${nextId}`);
-      if (nextCard) {
-        nextCard.classList.remove("locked");
-        nextCard.style.opacity = "1";
-        nextCard.style.cursor = "pointer";
-        nextCard.onclick = () => loadVideo(nextId);
+          const next = allVideos[index + 1];
+          if (next) {
+            const nextId = next.snippet.resourceId.videoId;
+            const nextCard = document.getElementById(`video-${nextId}`);
+            if (nextCard) {
+              nextCard.classList.remove("locked");
+              nextCard.style.opacity = "1";
+              nextCard.style.cursor = "pointer";
+              nextCard.onclick = () => loadVideo(nextId);
 
-        // ✅ Remove 🔒 icon without breaking layout
-        const lockTextDiv = [...nextCard.children].find(child =>
-          child.textContent.includes("🔒")
-        );
-        if (lockTextDiv) {
-          nextCard.removeChild(lockTextDiv);
+              const lockTextDiv = [...nextCard.children].find((child) =>
+                child.textContent.includes("🔒")
+              );
+              if (lockTextDiv) {
+                nextCard.removeChild(lockTextDiv);
+              }
+            }
+          }
+
+          updateProgress();
+          sendTimeUpdate();
         }
       }
-    }
-
-    updateProgress();
-    sendTimeUpdate();
-  }
-}
-
 
       function updateProgress() {
         const totalCompleted = previouslyCompleted + completedVideos.size;
@@ -228,7 +217,6 @@ card.appendChild(lockIcon);
         console.log(`Progress: ${totalCompleted} / ${total}`);
       }
 
-      // 🔄 Fetch durations from Videos API (not in playlist API)
       async function fetchVideoDurations(videoIds) {
         const ids = videoIds.join(",");
         const res = await fetch(
@@ -244,7 +232,6 @@ card.appendChild(lockIcon);
         });
       }
 
-      // Helper to convert ISO 8601 to mm:ss
       function convertDuration(isoDuration) {
         const match = isoDuration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
         const hours = match[1] ? parseInt(match[1]) : 0;
@@ -255,25 +242,20 @@ card.appendChild(lockIcon);
           : `${minutes}:${String(seconds).padStart(2, "0")}`;
       }
 
-      // 🧠 YouTube Player API loader
-      const tag = document.createElement("script");
-      tag.src = "https://www.youtube.com/iframe_api";
-      document.body.appendChild(tag);
+      // Send time update every 10 seconds
+      setInterval(() => {
+        sendTimeUpdate();
+      }, 10000);
 
-      fetchPlaylistVideos();
-
-      // updates
       function sendTimeUpdate() {
-        const active = parseInt(document.getElementById("active-time").textContent) + initialActiveTime;
-        const idle = parseInt(document.getElementById("idle-time").textContent) + initialIdleTime;
+        const active = activeSeconds + initialActiveTime;
+        const idle = idleSeconds + initialIdleTime;
         const completed = previouslyCompleted + completedVideos.size;
         const total = allVideos.length;
 
         fetch("/api/update-time", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           credentials: "include",
           body: JSON.stringify({
             activeTime: active,
@@ -281,10 +263,17 @@ card.appendChild(lockIcon);
             completedVideos: completed,
             totalVideos: total,
           }),
-        });
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            // Optionally handle server response here
+          })
+          .catch(console.error);
       }
 
-      setInterval(sendTimeUpdate, 10000); // every 10 seconds
+      // Load playlist videos on page load
+      fetchPlaylistVideos();
     </script>
+    <script src="https://www.youtube.com/iframe_api"></script>
   </body>
 </html>
