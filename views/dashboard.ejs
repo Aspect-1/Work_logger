@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="/style/dashboard.css" />
+    <link rel="stylesheet" href="/style/com.css" />
+  </head>
+  <body>
+    <!-- alert message -->
+    <% if (typeof message !== 'undefined') { %>
+  <div class="floating-alert" id="alert-msg"><%= message %></div>
+<% } %>
+
+
+    <nav class="nav-bar flex align-center green space-between">
+      <h2>Word Log Dashboard</h2>
+      <div class="right">
+        <button class="logout" onclick="logout()">Logout</button>
+      </div>
+    </nav>
+
+    <!-- WRAPPER -->
+    <div class="wrapper flex justify-center align-center">
+      <div class="main-area verticle">
+        <h2>Select a Course to begin..</h2>
+        <div class="module-area">
+          <!-- CARD -->
+          <div
+            id="playlist-container"
+            class="flex align-center space-between"
+          ></div>
+
+          <!-- CARD -->
+        </div>
+      </div>
+    </div>
+    <!-- WRAPPER -->
+
+    <script>
+      const API_KEY = "AIzaSyBGnSEnvIxpypoC9yqaLeKmZW4tSt-W3GA"; // Replace with your real API key
+      const playlistId = "PLgUwDviBIf0oF6QL8m22w1hIDC1vJ_BHz";
+
+      const playlistContainer = document.getElementById("playlist-container");
+
+      async function fetchPlaylistInfo() {
+        const response = await fetch(
+          `https://www.googleapis.com/youtube/v3/playlists?part=snippet&id=${playlistId}&key=${API_KEY}`
+        );
+        const data = await response.json();
+        const playlist = data.items[0];
+
+        if (!playlist) return;
+
+        const title = playlist.snippet.title;
+        const thumbnail = playlist.snippet.thumbnails.medium.url;
+
+        // Create card
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
+      <img src="${thumbnail}" alt="Playlist Thumbnail" />
+      <h3>${title}</h3>
+      <p>This is your assigned module.</p>
+      <button class="mod-button" onclick="viewPlaylist('${playlistId}')">View Videos</button>
+    `;
+
+        playlistContainer.appendChild(card);
+      }
+
+      function viewPlaylist(id) {
+        window.location.href = `/videos?playlistId=${id}`;
+      }
+
+      fetchPlaylistInfo();
+      function logout() {
+        // Call backend logout route
+        window.location.href = "/user/logout";
+      }
+
+      const alertBox = document.getElementById('alert-msg');
+  if (alertBox) {
+    setTimeout(() => {
+      alertBox.style.opacity = '0';
+    }, 2000); // Fade after 2 seconds
+    setTimeout(() => {
+      alertBox.remove();
+    }, 3000); // Fully remove after 3 seconds
+  }
+    </script>
+  </body>
+</html>

@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Video Player Page</title>
+    <link rel="stylesheet" href="/style/videos.css" />
+    <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+  </head>
+  <body>
+    <!-- 🔵 Header/Nav -->
+    <nav class="video-header">
+      <div class="time-info">
+        <span>🟢 Active Time: <span id="active-time">0s</span></span>
+        <span>⚪ Idle Time: <span id="idle-time">0s</span></span>
+      </div>
+      <div class="camera-preview">
+        <video id="webcam" autoplay muted></video>
+      </div>
+    </nav>
+
+    <!-- 🔷 Main Layout -->
+    <div class="video-main">
+      <!-- 📺 Left Pane: Video List -->
+      <div class="video-list-pane" id="video-list">
+        <!-- Cards will be inserted dynamically here -->
+      </div>
+
+      <!-- ▶️ Right Pane: Video Player -->
+      <div class="video-player-pane" id="video-player-area">
+        <p class="placeholder-text">Please select a video to play</p>
+      </div>
+    </div>
+
+    <script>
+  // Setup webcam preview
+  const video = document.getElementById("webcam");
+  navigator.mediaDevices
+    .getUserMedia({ video: true })
+    .then((stream) => {
+      video.srcObject = stream;
+    })
+    .catch(console.error);
+</script>
+
+
+    <script>
+  window.onload = async function () {
+    console.log("Loading face-api model...");
+    await faceapi.nets.tinyFaceDetector.loadFromUri('/models/tiny-face-detector');
+    console.log("Model loaded");
+
+    const webcam = document.getElementById('webcam');
+
+    // Wait for webcam to load video
+    webcam.addEventListener("loadeddata", () => {
+      const displaySize = { width: webcam.videoWidth, height: webcam.videoHeight };
+
+      let activeSeconds = 0;
+      let idleSeconds = 0;
+
+      setInterval(async () => {
+        const detections = await faceapi.detectAllFaces(webcam, new faceapi.TinyFaceDetectorOptions());
+
+        if (detections.length > 0) {
+          activeSeconds++;
+        } else {
+          idleSeconds++;
+        }
+
+        document.getElementById("active-time").textContent = activeSeconds + "s";
+        document.getElementById("idle-time").textContent = idleSeconds + "s";
+      }, 1000);
+    });
+  };
+</script>
+
+
+
+    <script>
+      const initialCompleted = <%= userData.completedVideos || 0 %>;
+      const initialActiveTime = <%= userData.activeTime || 0 %>;
+      const initialIdleTime = <%= userData.idleTime || 0 %>;
+
+      const API_KEY = "AIzaSyBGnSEnvIxpypoC9yqaLeKmZW4tSt-W3GA"; // Replace with your real API key
+      const playlistId = "<%= playlistId %>";
+      const videoListPane = document.getElementById("video-list");
+      const videoPlayerPane = document.getElementById("video-player-area");
+
+      let completedVideos = new Set();
+      let previouslyCompleted = initialCompleted; // Keep track of watched videos
+      let allVideos = [];
+
+      async function fetchPlaylistVideos() {
+        try {
+          const res = await fetch(
+            `https://www.googleapis.com/youtube/v3/playlistItems?part=snippet&maxResults=50&playlistId=${playlistId}&key=${API_KEY}`
+          );
+          const data = await res.json();
+          allVideos = data.items;
+
+          if (!data.items || data.items.length === 0) {
+            videoListPane.innerHTML = "<p>No videos found.</p>";
+            return;
+          }
+
+          data.items.forEach((item, index) => {
+            const videoId = item.snippet.resourceId.videoId;
+            const title = item.snippet.title;
+            const desc = item.snippet.description || "No description available.";
+            const thumbnail = item.snippet.thumbnails.medium.url;
+
+            const card = document.createElement("div");
+            card.className = "video-card";
+            card.id = `video-${videoId}`;
+            card.innerHTML = `
+              <div class="video-thumb">
+                <img src="${thumbnail}" alt="${title}">
+                <div class="duration">--:--</div> <!-- Placeholder, we’ll update -->
+              </div>
+              <div class="video-info">
+                <h4>${title}</h4>
+                <p>${desc.substring(0, 60)}...</p>
+              </div>
+            `;
+
+            if (index < previouslyCompleted) {
+              card.style.borderLeft = "5px solid green";
+              card.style.backgroundColor = "#e8f5e9";
+            }
+
+            if (index <= previouslyCompleted) {
+card.onclick = () => loadVideo(videoId);
+} else {
+card.classList.add("locked");
+card.style.opacity = "0.6";
+card.style.cursor = "not-allowed";
+const lockIcon = document.createElement("div");
+lockIcon.innerHTML = "🔒 Locked";
+lockIcon.style.textAlign = "center";
+card.appendChild(lockIcon);
+}
+            videoListPane.appendChild(card);
+          });
+
+          // After DOM is ready, fetch durations
+          fetchVideoDurations(data.items.map((item) => item.snippet.resourceId.videoId));
+        } catch (err) {
+          console.error("Failed to fetch videos:", err);
+        }
+      }
+
+      function loadVideo(videoId) {
+        videoPlayerPane.innerHTML = `
+          <iframe id="yt-player" width="100%" height="500"
+            src="https://www.youtube.com/embed/${videoId}?enablejsapi=1&modestbranding=1&controls=1&rel=0"
+            frameborder="0" allowfullscreen>
+          </iframe>
+        `;
+
+        // Wait for iframe to load, then control playback
+        setTimeout(() => {
+          const iframe = document.getElementById("yt-player");
+          const player = new YT.Player(iframe, {
+            events: {
+              onReady: (event) => {
+                event.target.playVideo();
+
+                // Disable skip by tracking time (coming next step)
+              },
+              onStateChange: (event) => {
+                if (event.data === YT.PlayerState.ENDED) {
+                  markCompleted(videoId);
+                  sendTimeUpdate(); // Send time update when video ends
+                }
+              },
+            },
+          });
+        }, 300);
+      }
+
+      function markCompleted(videoId) {
+  if (!completedVideos.has(videoId)) {
+    completedVideos.add(videoId);
+
+    // ✅ Style current card as completed
+    const card = document.getElementById(`video-${videoId}`);
+    if (card) {
+      card.style.borderLeft = "5px solid green";
+      card.style.backgroundColor = "#e8f5e9";
+    }
+
+    // ✅ Find index of current video in the list
+    const index = allVideos.findIndex(
+      (v) => v.snippet.resourceId.videoId === videoId
+    );
+
+    // ✅ Unlock the next video
+    const next = allVideos[index + 1];
+    if (next) {
+      const nextId = next.snippet.resourceId.videoId;
+      const nextCard = document.getElementById(`video-${nextId}`);
+      if (nextCard) {
+        nextCard.classList.remove("locked");
+        nextCard.style.opacity = "1";
+        nextCard.style.cursor = "pointer";
+        nextCard.onclick = () => loadVideo(nextId);
+
+        // ✅ Remove 🔒 icon without breaking layout
+        const lockTextDiv = [...nextCard.children].find(child =>
+          child.textContent.includes("🔒")
+        );
+        if (lockTextDiv) {
+          nextCard.removeChild(lockTextDiv);
+        }
+      }
+    }
+
+    updateProgress();
+    sendTimeUpdate();
+  }
+}
+
+
+      function updateProgress() {
+        const totalCompleted = previouslyCompleted + completedVideos.size;
+        const total = allVideos.length;
+        console.log(`Progress: ${totalCompleted} / ${total}`);
+      }
+
+      // 🔄 Fetch durations from Videos API (not in playlist API)
+      async function fetchVideoDurations(videoIds) {
+        const ids = videoIds.join(",");
+        const res = await fetch(
+          `https://www.googleapis.com/youtube/v3/videos?part=contentDetails&id=${ids}&key=${API_KEY}`
+        );
+        const data = await res.json();
+
+        data.items.forEach((item) => {
+          const vid = item.id;
+          const duration = convertDuration(item.contentDetails.duration);
+          const tag = document.querySelector(`#video-${vid} .duration`);
+          if (tag) tag.textContent = duration;
+        });
+      }
+
+      // Helper to convert ISO 8601 to mm:ss
+      function convertDuration(isoDuration) {
+        const match = isoDuration.match(/PT(\d+H)?(\d+M)?(\d+S)?/);
+        const hours = match[1] ? parseInt(match[1]) : 0;
+        const minutes = match[2] ? parseInt(match[2]) : 0;
+        const seconds = match[3] ? parseInt(match[3]) : 0;
+        return hours > 0
+          ? `${hours}:${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`
+          : `${minutes}:${String(seconds).padStart(2, "0")}`;
+      }
+
+      // 🧠 YouTube Player API loader
+      const tag = document.createElement("script");
+      tag.src = "https://www.youtube.com/iframe_api";
+      document.body.appendChild(tag);
+
+      fetchPlaylistVideos();
+
+      // updates
+      function sendTimeUpdate() {
+        const active = parseInt(document.getElementById("active-time").textContent) + initialActiveTime;
+        const idle = parseInt(document.getElementById("idle-time").textContent) + initialIdleTime;
+        const completed = previouslyCompleted + completedVideos.size;
+        const total = allVideos.length;
+
+        fetch("/api/update-time", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({
+            activeTime: active,
+            idleTime: idle,
+            completedVideos: completed,
+            totalVideos: total,
+          }),
+        });
+      }
+
+      setInterval(sendTimeUpdate, 10000); // every 10 seconds
+    </script>
+  </body>
+</html>

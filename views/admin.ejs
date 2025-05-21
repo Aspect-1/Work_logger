@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Admin Dashboard</title>
+    <style>
+      table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+      th,
+      td {
+        border: 1px solid #ccc;
+        padding: 8px;
+        text-align: center;
+      }
+      th {
+        background-color: #f2f2f2;
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Admin - Employee Progress</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>User ID</th>
+          <th>Username</th>
+          <th>Active Time</th>
+          <th>Idle Time</th>
+          <th>Completed Videos</th>
+          <th>Total Videos</th>
+          <th>% Completion</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% users.forEach(user => { %>
+        <tr>
+          <td><%= user._id %></td>
+          <td><%= user.username %></td>
+          <td><%= user.activeTime || 0 %>s</td>
+          <td><%= user.idleTime || 0 %>s</td>
+          <td><%= user.completedVideos || 0 %></td>
+          <td><%= user.totalVideos || 0 %></td>
+          <td>
+            <%= user.totalVideos > 0 ? Math.round((user.completedVideos /
+            user.totalVideos) * 100) : 0 %>%
+          </td>
+        </tr>
+        <% }) %>
+      </tbody>
+    </table>
+  </body>
+</html>
