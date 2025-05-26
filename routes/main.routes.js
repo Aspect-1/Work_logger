@@ -4,14 +4,22 @@ const authMiddleware = require('../middlewares/auth');
 const adminMiddleware = require('../middlewares/admin');
 
 const User = require('../models/user.model');
+const Playlist = require('../models/playlist');
 
 async function getUserData(userId) {
 return await User.findById(userId);
 }
 
-router.get('/dashboard',authMiddleware, (req, res) => {
-  const message = req.query.message;
-  res.render('dashboard', { message });
+
+router.get('/dashboard', authMiddleware, async (req, res) => {
+  const user = req.user;
+
+  const playlists = await Playlist.find({ userId: user._id });
+
+  res.render('dashboard', {
+    userData: user,
+    playlists: playlists // send array of playlists for that user
+  });
 });
 
 

@@ -12,7 +12,6 @@ connectToDB();
 
 const app = express();
 
-// Log model directory being served (debugging)
 console.log('Serving models from:', path.join(__dirname, 'public/models'));
 
 // Middleware

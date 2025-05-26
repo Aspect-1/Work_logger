@@ -25,7 +25,7 @@ const userSchema = new mongoose.Schema({
     },
     activeTime: {
         type: Number,
-        default: 0 // in seconds
+        default: 0 
     },
     idleTime: {
         type: Number,

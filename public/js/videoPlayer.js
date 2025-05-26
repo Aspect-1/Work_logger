@@ -12,7 +12,7 @@ let completedVideos = new Set();
 let previouslyCompleted = initialCompleted;
 let allVideos = [];
 
-// Everything else stays the same
+
 
 
 async function fetchPlaylistVideos() {

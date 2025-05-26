@@ -27,10 +27,18 @@
         <h2>Select a Course to begin..</h2>
         <div class="module-area">
           <!-- CARD -->
-          <div
-            id="playlist-container"
-            class="flex align-center space-between"
-          ></div>
+          <div id="playlist-container" class="flex align-center space-between">
+  <% playlists.forEach(p => { %>
+    <div class="playlist-card">
+      <h3><%= p.title %></h3>
+      <form action="/videos" method="GET">
+        <input type="hidden" name="playlistId" value="<%= p.playlistId %>">
+        <button type="submit">▶ Play Videos</button>
+      </form>
+    </div>
+  <% }) %>
+</div>
+
 
           <!-- CARD -->
         </div>
@@ -39,7 +47,7 @@
     <!-- WRAPPER -->
 
     <script>
-      const API_KEY = "AIzaSyBGnSEnvIxpypoC9yqaLeKmZW4tSt-W3GA"; // Replace with your real API key
+      const API_KEY = "AIzaSyBGnSEnvIxpypoC9yqaLeKmZW4tSt-W3GA"; // Replace with your API key
       const playlistId = "PLgUwDviBIf0oF6QL8m22w1hIDC1vJ_BHz";
 
       const playlistContainer = document.getElementById("playlist-container");
