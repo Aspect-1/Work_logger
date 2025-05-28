@@ -12,8 +12,13 @@ let completedVideos = new Set();
 let previouslyCompleted = initialCompleted;
 let allVideos = [];
 
+let player = null;
+let localActiveSeconds = 0;
+let localIdleSeconds = 0;
+let localTimerInterval = null;
 
-
+// Face detection status (to be updated from faceTracking.js)
+window.isFaceDetected = false;
 
 async function fetchPlaylistVideos() {
   try {
@@ -75,29 +80,39 @@ async function fetchPlaylistVideos() {
 
 function loadVideo(videoId) {
   videoPlayerPane.innerHTML = `
-  <div id="local-timer" style="position: absolute; top: 10px; right: 20px; font-size: 18px; background: rgba(0,0,0,0.6); color: white; padding: 6px 10px; border-radius: 6px; display: none;">
-    ⏱️ 0s
-  </div>
-  <iframe id="yt-player" width="100%" height="500"
-    src="https://www.youtube.com/embed/${videoId}?enablejsapi=1&modestbranding=1&controls=1&rel=0"
-    frameborder="0" allowfullscreen>
-  </iframe>
-`;
+    <div id="local-timer" style="position: absolute; top: 10px; right: 20px; font-size: 18px; background: rgba(0,0,0,0.6); color: white; padding: 6px 10px; border-radius: 6px; display: none;">
+      🟢 Active: 0s ⚪ Idle: 0s
+    </div>
+    <iframe id="yt-player" width="100%" height="500"
+      src="https://www.youtube.com/embed/${videoId}?enablejsapi=1&modestbranding=1&controls=1&rel=0"
+      frameborder="0" allowfullscreen>
+    </iframe>
+  `;
 
+  // Reset local timer counters for new video
+  localActiveSeconds = 0;
+  localIdleSeconds = 0;
 
   setTimeout(() => {
     const iframe = document.getElementById("yt-player");
-    const player = new YT.Player(iframe, {
+    player = new YT.Player(iframe, {
       events: {
         onReady: (event) => {
-          event.target.playVideo();
-          startLocalTimer();
+          // Don't autoplay here; timer starts on PLAYING state
         },
         onStateChange: (event) => {
-          if (event.data === YT.PlayerState.ENDED) {
-            markCompleted(videoId);
-            sendTimeUpdate();
-            stopLocalTimer();
+          switch (event.data) {
+            case YT.PlayerState.PLAYING:
+              startLocalTimer();
+              break;
+            case YT.PlayerState.PAUSED:
+            case YT.PlayerState.ENDED:
+              stopLocalTimer();
+              if (event.data === YT.PlayerState.ENDED) {
+                markCompleted(videoId);
+                sendTimeUpdate();
+              }
+              break;
           }
         },
       },
@@ -105,34 +120,29 @@ function loadVideo(videoId) {
   }, 300);
 }
 
-let localTimerInterval = null;
-let localVideoSeconds = 0;
-
 function startLocalTimer() {
-  clearInterval(localTimerInterval);
-  localVideoSeconds = 0;
+  if (localTimerInterval) return; // Timer already running
+
   const timerBox = document.getElementById("local-timer");
   if (!timerBox) return;
 
   timerBox.style.display = "block";
-  timerBox.textContent = "⏱️ 0s";
+  timerBox.textContent = `🟢 Active: ${localActiveSeconds}s ⚪ Idle: ${localIdleSeconds}s`;
 
   localTimerInterval = setInterval(() => {
-    localVideoSeconds++;
-    timerBox.textContent = `⏱️ ${localVideoSeconds}s`;
+    if (window.isFaceDetected) {
+      localActiveSeconds++;
+    } else {
+      localIdleSeconds++;
+    }
+    timerBox.textContent = `🟢 Active: ${localActiveSeconds}s ⚪ Idle: ${localIdleSeconds}s`;
   }, 1000);
 }
 
 function stopLocalTimer() {
   clearInterval(localTimerInterval);
-  localVideoSeconds = 0;
-  const timerBox = document.getElementById("local-timer");
-  if (!timerBox) return;
-
-  timerBox.textContent = "⏱️ 0s";
-  timerBox.style.display = "none";
+  localTimerInterval = null;
 }
-
 
 function markCompleted(videoId) {
   if (!completedVideos.has(videoId)) {
@@ -223,6 +233,7 @@ function sendTimeUpdate() {
     .catch(console.error);
 }
 
+// Periodically send overall time updates
 setInterval(() => {
   sendTimeUpdate();
 }, 10000);

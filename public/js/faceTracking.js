@@ -1,5 +1,6 @@
-let activeSeconds = 0;
+let activeSeconds = 0; 
 let idleSeconds = 0;
+window.isFaceDetected = false;  // Global flag for face detection
 
 document.addEventListener("DOMContentLoaded", async () => {
   console.log("Loading face-api model...");
@@ -24,8 +25,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 
       if (detections.length > 0) {
         activeSeconds++;
+        window.isFaceDetected = true;
       } else {
         idleSeconds++;
+        window.isFaceDetected = false;
       }
 
       document.getElementById("active-time").textContent = activeSeconds + "s";
