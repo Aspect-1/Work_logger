@@ -75,11 +75,15 @@ async function fetchPlaylistVideos() {
 
 function loadVideo(videoId) {
   videoPlayerPane.innerHTML = `
-    <iframe id="yt-player" width="100%" height="500"
-      src="https://www.youtube.com/embed/${videoId}?enablejsapi=1&modestbranding=1&controls=1&rel=0"
-      frameborder="0" allowfullscreen>
-    </iframe>
-  `;
+  <div id="local-timer" style="position: absolute; top: 10px; right: 20px; font-size: 18px; background: rgba(0,0,0,0.6); color: white; padding: 6px 10px; border-radius: 6px; display: none;">
+    ⏱️ 0s
+  </div>
+  <iframe id="yt-player" width="100%" height="500"
+    src="https://www.youtube.com/embed/${videoId}?enablejsapi=1&modestbranding=1&controls=1&rel=0"
+    frameborder="0" allowfullscreen>
+  </iframe>
+`;
+
 
   setTimeout(() => {
     const iframe = document.getElementById("yt-player");
@@ -87,17 +91,48 @@ function loadVideo(videoId) {
       events: {
         onReady: (event) => {
           event.target.playVideo();
+          startLocalTimer();
         },
         onStateChange: (event) => {
           if (event.data === YT.PlayerState.ENDED) {
             markCompleted(videoId);
             sendTimeUpdate();
+            stopLocalTimer();
           }
         },
       },
     });
   }, 300);
 }
+
+let localTimerInterval = null;
+let localVideoSeconds = 0;
+
+function startLocalTimer() {
+  clearInterval(localTimerInterval);
+  localVideoSeconds = 0;
+  const timerBox = document.getElementById("local-timer");
+  if (!timerBox) return;
+
+  timerBox.style.display = "block";
+  timerBox.textContent = "⏱️ 0s";
+
+  localTimerInterval = setInterval(() => {
+    localVideoSeconds++;
+    timerBox.textContent = `⏱️ ${localVideoSeconds}s`;
+  }, 1000);
+}
+
+function stopLocalTimer() {
+  clearInterval(localTimerInterval);
+  localVideoSeconds = 0;
+  const timerBox = document.getElementById("local-timer");
+  if (!timerBox) return;
+
+  timerBox.textContent = "⏱️ 0s";
+  timerBox.style.display = "none";
+}
+
 
 function markCompleted(videoId) {
   if (!completedVideos.has(videoId)) {
