@@ -60,8 +60,17 @@ router.get('/videos', authMiddleware, async (req, res) => {
 
 // 📌 Update user progress (active/idle time + completed videos)
 router.post('/api/update-time', authMiddleware, async (req, res) => {
-  const { activeTime, idleTime, completedVideos, totalVideos, playlistId } = req.body;
-  const userId = new mongoose.Types.ObjectId(req.user.userid); // match type used in .findOne
+  const {
+    activeTime,
+    idleTime,
+    completedVideos,
+    totalVideos,
+    playlistId,
+    skippedSeconds,
+    skippedVideo
+  } = req.body;
+
+  const userId = new mongoose.Types.ObjectId(req.user.userid);
 
   try {
     await User.findByIdAndUpdate(userId, {
@@ -71,7 +80,13 @@ router.post('/api/update-time', authMiddleware, async (req, res) => {
 
     await UserPlaylistProgress.findOneAndUpdate(
       { userId, playlistId },
-      { completedCount: completedVideos },
+      {
+        completedCount: completedVideos,
+        $inc: {
+          skippedSeconds: skippedSeconds || 0,
+          skippedVideos: skippedVideo ? 1 : 0 // ✅ Conditional increment
+        }
+      },
       { upsert: true, new: true }
     );
 
@@ -81,6 +96,8 @@ router.post('/api/update-time', authMiddleware, async (req, res) => {
     res.status(500).json({ error: "Failed to update user progress" });
   }
 });
+
+
 
 // 📌 Admin - view users
 router.get('/admin', authMiddleware, adminMiddleware, async (req, res) => {

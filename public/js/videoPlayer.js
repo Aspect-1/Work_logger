@@ -3,7 +3,7 @@ const initialActiveTime = window.USER_DATA.activeTime || 0;
 const initialIdleTime = window.USER_DATA.idleTime || 0;
 const playlistId = window.USER_DATA.playlistId;
 
-const API_KEY = "AIzaSyBGnSEnvIxpypoC9yqaLeKmZW4tSt-W3GA"; 
+const API_KEY = "AIzaSyBGnSEnvIxpypoC9yqaLeKmZW4tSt-W3GA";
 
 const videoListPane = document.getElementById("video-list");
 const videoPlayerPane = document.getElementById("video-player-area");
@@ -13,11 +13,11 @@ let previouslyCompleted = initialCompleted;
 let allVideos = [];
 
 let player = null;
+let currentVideoLength = 0;
 let localActiveSeconds = 0;
 let localIdleSeconds = 0;
 let localTimerInterval = null;
 
-// Face detection status (to be updated from faceTracking.js)
 window.isFaceDetected = false;
 
 async function fetchPlaylistVideos() {
@@ -69,6 +69,7 @@ async function fetchPlaylistVideos() {
         lockIcon.style.textAlign = "center";
         card.appendChild(lockIcon);
       }
+
       videoListPane.appendChild(card);
     });
 
@@ -89,16 +90,16 @@ function loadVideo(videoId) {
     </iframe>
   `;
 
-  // Reset local timer counters for new video
   localActiveSeconds = 0;
   localIdleSeconds = 0;
+  currentVideoLength = 0;
 
   setTimeout(() => {
     const iframe = document.getElementById("yt-player");
     player = new YT.Player(iframe, {
       events: {
         onReady: (event) => {
-          // Don't autoplay here; timer starts on PLAYING state
+          currentVideoLength = event.target.getDuration(); // ✅ capture duration
         },
         onStateChange: (event) => {
           switch (event.data) {
@@ -109,8 +110,12 @@ function loadVideo(videoId) {
             case YT.PlayerState.ENDED:
               stopLocalTimer();
               if (event.data === YT.PlayerState.ENDED) {
+                const watchedTime = localActiveSeconds + localIdleSeconds;
+                const skipped = Math.max(0, currentVideoLength - watchedTime);
+                const isSkippedVideo = skipped > 0;
+
+                sendTimeUpdate(skipped, isSkippedVideo); // ✅ send skipped data
                 markCompleted(videoId);
-                sendTimeUpdate();
               }
               break;
           }
@@ -121,7 +126,7 @@ function loadVideo(videoId) {
 }
 
 function startLocalTimer() {
-  if (localTimerInterval) return; // Timer already running
+  if (localTimerInterval) return;
 
   const timerBox = document.getElementById("local-timer");
   if (!timerBox) return;
@@ -177,7 +182,6 @@ function markCompleted(videoId) {
     }
 
     updateProgress();
-    sendTimeUpdate();
   }
 }
 
@@ -212,7 +216,7 @@ function convertDuration(isoDuration) {
     : `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
-function sendTimeUpdate() {
+function sendTimeUpdate(skippedSeconds = 0, isSkippedVideo = false) {
   const active = localActiveSeconds + initialActiveTime;
   const idle = localIdleSeconds + initialIdleTime;
   const completed = previouslyCompleted + completedVideos.size;
@@ -227,17 +231,18 @@ function sendTimeUpdate() {
       idleTime: idle,
       completedVideos: completed,
       totalVideos: total,
-      playlistId
+      playlistId,
+      skippedSeconds,
+      skippedVideo: isSkippedVideo
     }),
   })
     .then((res) => res.json())
     .catch(console.error);
 }
 
-
-// Periodically send overall time updates
+// Auto-save time every 10 seconds (skippedSeconds = 0)
 setInterval(() => {
-  sendTimeUpdate();
+  sendTimeUpdate(0, false);
 }, 10000);
 
 fetchPlaylistVideos();
