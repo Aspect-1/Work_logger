@@ -213,8 +213,8 @@ function convertDuration(isoDuration) {
 }
 
 function sendTimeUpdate() {
-  const active = activeSeconds + initialActiveTime;
-  const idle = idleSeconds + initialIdleTime;
+  const active = localActiveSeconds + initialActiveTime;
+  const idle = localIdleSeconds + initialIdleTime;
   const completed = previouslyCompleted + completedVideos.size;
   const total = allVideos.length;
 
@@ -227,11 +227,13 @@ function sendTimeUpdate() {
       idleTime: idle,
       completedVideos: completed,
       totalVideos: total,
+      playlistId
     }),
   })
     .then((res) => res.json())
     .catch(console.error);
 }
+
 
 // Periodically send overall time updates
 setInterval(() => {

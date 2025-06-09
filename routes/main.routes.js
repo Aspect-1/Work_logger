@@ -1,39 +1,26 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
+
 const authMiddleware = require('../middlewares/auth');
 const adminMiddleware = require('../middlewares/admin');
 
 const User = require('../models/user.model');
 const Playlist = require('../models/playlist');
+const UserPlaylistProgress = require('../models/UserPlaylistProgress');
 
-// Dashboard - shows playlists assigned to the logged-in user
-const mongoose = require('mongoose'); // Ensure this is at the top
-
+// 📌 Dashboard - shows playlists assigned to the logged-in user
 router.get('/dashboard', authMiddleware, async (req, res) => {
   try {
     const user = req.user;
-
-    // ✅ Access userId correctly from token
     const userId = user.userid;
-
-    // DEBUG 1: Check extracted userid and type
-    console.log('user.userid:', userId, 'typeof:', typeof userId);
-
-    // ✅ Safely convert to ObjectId
     const userObjectId = new mongoose.Types.ObjectId(userId);
 
-    // DEBUG 2: Split queries
     const playlistsAll = await Playlist.find({ assignedTo: 'all' }).lean();
     const playlistsUser = await Playlist.find({ assignedTo: 'user', userId: userObjectId }).lean();
 
-    // DEBUG 3: Print results
-    console.log('Public playlists:', playlistsAll);
-    console.log('User-specific playlists:', playlistsUser);
-
-    // Merge both
     const playlists = [...playlistsAll, ...playlistsUser];
 
-    // Render dashboard
     res.render('dashboard', {
       user,
       playlists
@@ -45,40 +32,49 @@ router.get('/dashboard', authMiddleware, async (req, res) => {
   }
 });
 
-
-
-// Videos page - renders specific playlist
+// 📌 Videos page - renders specific playlist
 router.get('/videos', authMiddleware, async (req, res) => {
   try {
     const playlistId = req.query.playlistId;
-    const userId = req.user.userid; // ✅ Use userid from JWT payload
+    const userId = new mongoose.Types.ObjectId(req.user.userid);
 
     const userData = await User.findById(userId);
-    if (!userData) {
-      return res.status(404).send("User not found");
+    if (!userData) return res.status(404).send("User not found");
+
+    let progress = await UserPlaylistProgress.findOne({ userId, playlistId });
+    if (!progress) {
+      progress = await UserPlaylistProgress.create({ userId, playlistId, completedCount: 0 });
     }
 
-    res.render('videos', { playlistId, userId, userData });
+    res.render('videos', {
+      playlistId,
+      userId,
+      userData,
+      completedCount: progress.completedCount
+    });
   } catch (err) {
     console.error("Videos page error:", err);
     res.status(500).send("Error loading videos");
   }
 });
 
-
-// Update user progress (active/idle time, completed videos)
+// 📌 Update user progress (active/idle time + completed videos)
 router.post('/api/update-time', authMiddleware, async (req, res) => {
-  const { activeTime, idleTime, completedVideos, totalVideos } = req.body;
-  const userId = req.user._id;
+  const { activeTime, idleTime, completedVideos, totalVideos, playlistId } = req.body;
+  const userId = new mongoose.Types.ObjectId(req.user.userid); // match type used in .findOne
 
   try {
     await User.findByIdAndUpdate(userId, {
       activeTime,
-      idleTime,
-      completedVideos,
-      totalVideos
+      idleTime
     });
-    console.log("User progress updated successfully");
+
+    await UserPlaylistProgress.findOneAndUpdate(
+      { userId, playlistId },
+      { completedCount: completedVideos },
+      { upsert: true, new: true }
+    );
+
     res.status(200).json({ message: "Progress saved" });
   } catch (err) {
     console.error("Update time error:", err);
@@ -86,7 +82,7 @@ router.post('/api/update-time', authMiddleware, async (req, res) => {
   }
 });
 
-// Admin dashboard - view all users
+// 📌 Admin - view users
 router.get('/admin', authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const users = await User.find({});
@@ -97,15 +93,13 @@ router.get('/admin', authMiddleware, adminMiddleware, async (req, res) => {
   }
 });
 
-// Admin playlist management page
+// 📌 Admin - manage playlists
 router.get('/admin/playlists', authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const users = await User.find({});
     const playlists = await Playlist.find({}).populate('userId');
 
-    // Group playlists by userId or 'all'
     const groupedPlaylists = {};
-
     playlists.forEach(p => {
       const key = p.assignedTo === 'all' ? 'all' : p.userId?._id;
       if (!groupedPlaylists[key]) groupedPlaylists[key] = [];
@@ -119,7 +113,7 @@ router.get('/admin/playlists', authMiddleware, adminMiddleware, async (req, res)
   }
 });
 
-// Admin playlist creation (assign to all or specific user)
+// 📌 Admin - create playlist
 router.post('/admin/playlists', authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const { title, playlistId, assignedTo } = req.body;
@@ -139,7 +133,7 @@ router.post('/admin/playlists', authMiddleware, adminMiddleware, async (req, res
   }
 });
 
-// Delete a playlist by playlistId
+// 📌 Admin - delete playlist
 router.post('/admin/playlists/delete', authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const { playlistId } = req.body;
@@ -147,15 +141,12 @@ router.post('/admin/playlists/delete', authMiddleware, adminMiddleware, async (r
       return res.status(400).send('Playlist ID is required');
     }
 
-    // Delete playlists with this playlistId (you may have duplicates, so delete all)
     await Playlist.deleteMany({ playlistId });
-
     res.redirect('/admin/playlists');
   } catch (err) {
     console.error("Error deleting playlist:", err);
     res.status(500).send("Error deleting playlist");
   }
 });
-
 
 module.exports = router;

@@ -31,10 +31,6 @@ const userSchema = new mongoose.Schema({
         type: Number,
         default: 0
     },
-    completedVideos: {
-        type: Number,
-        default: 0
-    },
     totalVideos: {
         type: Number,
         default: 0

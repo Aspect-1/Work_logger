@@ -32,13 +32,15 @@
 
 
     <script>
-    window.USER_DATA = {
-    completedVideos: <%= userData.completedVideos || 0 %>,
+  window.USER_DATA = {
+    completedVideos: <%= completedCount %>,
     activeTime: <%= userData.activeTime || 0 %>,
     idleTime: <%= userData.idleTime || 0 %>,
     playlistId: "<%= playlistId %>"
   };
 </script>
+
+
     
   <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
   <script defer src="https://www.youtube.com/iframe_api"></script>
