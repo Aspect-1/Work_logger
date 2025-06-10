@@ -4,129 +4,16 @@
   <meta charset="UTF-8">
   <title>Admin Playlist Manager</title>
   <style>
-    /* Reset some default margins */
-body, h2, h3, ul, li, form {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
-/* Body styling */
-body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-  background-color: #f9fafb;
-  padding: 30px 40px;
-  color: #333;
-  max-width: 900px;
-  margin: auto;
-}
-
-/* Headings */
-h2 {
-  font-size: 2rem;
-  font-weight: 700;
-  margin-bottom: 25px;
-  color: #222;
-  border-bottom: 2px solid #4a90e2;
-  padding-bottom: 8px;
-}
-
-h3 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin-top: 30px;
-  margin-bottom: 15px;
-  color: #4a90e2;
-  border-left: 4px solid #4a90e2;
-  padding-left: 10px;
-}
-
-/* Playlist lists */
-ul {
-  list-style: none;
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 15px 20px;
-  box-shadow: 0 2px 5px rgb(0 0 0 / 0.05);
-  margin-bottom: 30px;
-}
-
-li {
-  padding: 8px 0;
-  border-bottom: 1px solid #eee;
-  font-size: 1rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-li:last-child {
-  border-bottom: none;
-}
-
-/* Forms */
-form {
-  background: #fff;
-  border: 1px solid #ddd;
-  border-radius: 10px;
-  padding: 20px 25px;
-  margin-bottom: 30px;
-  box-shadow: 0 2px 8px rgb(0 0 0 / 0.07);
-  display: flex;
-  flex-wrap: wrap;
-  gap: 12px;
-  align-items: center;
-}
-
-/* Inputs and selects */
-form input[type="text"],
-form input[type="password"],
-form select {
-  flex: 1 1 200px;
-  padding: 10px 14px;
-  font-size: 1rem;
-  border: 1px solid #ccc;
-  border-radius: 6px;
-  transition: border-color 0.3s ease;
-}
-
-form input[type="text"]:focus,
-form input[type="password"]:focus,
-form select:focus {
-  outline: none;
-  border-color: #4a90e2;
-}
-
-/* Buttons */
-form button {
-  flex-shrink: 0;
-  background-color: #4a90e2;
-  border: none;
-  padding: 11px 24px;
-  border-radius: 6px;
-  font-weight: 600;
-  color: white;
-  font-size: 1rem;
-  cursor: pointer;
-  transition: background-color 0.25s ease;
-  box-shadow: 0 2px 6px rgb(74 144 226 / 0.6);
-}
-
-form button:hover {
-  background-color: #357abd;
-}
-
-/* Delete button overrides */
-form[action$="/delete"] button {
-  background-color: #d9534f;
-  box-shadow: 0 2px 6px rgb(217 83 79 / 0.6);
-}
-
-form[action$="/delete"] button:hover {
-  background-color: #b52b28;
-}
-
+    body { font-family: sans-serif; padding: 20px; background-color: #f9fafb; max-width: 900px; margin: auto; }
+    h2, h3 { color: #333; margin-top: 30px; }
+    ul { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 15px; list-style: none; }
+    li { padding: 8px 0; border-bottom: 1px solid #eee; }
+    li:last-child { border-bottom: none; }
+    form { margin-top: 20px; padding: 20px; background: #fff; border: 1px solid #ddd; border-radius: 10px; }
+    input, select, button { padding: 10px; margin: 5px 0; width: 100%; max-width: 400px; }
+    button { background-color: #4a90e2; color: white; border: none; cursor: pointer; }
+    button:hover { background-color: #357abd; }
+    .group-members { font-size: 0.9rem; color: #666; margin-top: 5px; }
   </style>
 </head>
 <body>
@@ -150,6 +37,18 @@ form[action$="/delete"] button:hover {
     </ul>
   <% }) %>
 
+  <% groups.forEach(group => { %>
+    <h3>Playlists for Group: <%= group.name %></h3>
+    <div class="group-members">
+      Members: <%= group.members.map(m => m.name || m.email).join(", ") %>
+    </div>
+    <ul>
+      <% (groupedPlaylists[group._id] || []).forEach(p => { %>
+        <li><%= p.title %> (Playlist ID: <%= p.playlistId %>)</li>
+      <% }) %>
+    </ul>
+  <% }) %>
+
   <h3>Add New Playlist</h3>
   <form action="/admin/playlists" method="POST">
     <input name="title" placeholder="Playlist Title" required />
@@ -159,15 +58,40 @@ form[action$="/delete"] button:hover {
       <% users.forEach(user => { %>
         <option value="<%= user._id %>"><%= user.name || user.email %></option>
       <% }) %>
+      <option disabled>──────────</option>
+      <% groups.forEach(group => { %>
+        <option value="<%= group._id %>">[Group] <%= group.name %></option>
+      <% }) %>
     </select>
     <button type="submit">Add Playlist</button>
   </form>
 
   <h3>Delete Playlist</h3>
-<form action="/admin/playlists/delete" method="POST">
-  <input name="playlistId" placeholder="YouTube Playlist ID to delete" required />
-  <button type="submit" style="background-color: #d9534f; color: white;">Delete Playlist</button>
-</form>
+  <form action="/admin/playlists/delete" method="POST">
+    <input name="playlistId" placeholder="YouTube Playlist ID to delete" required />
+    <button type="submit" style="background-color: #d9534f; color: white;">Delete Playlist</button>
+  </form>
 
+  <h3>Create New Group</h3>
+  <form action="/admin/groups" method="POST">
+    <input name="groupName" placeholder="Group Name" required />
+    <label>Select Members:</label>
+    <select name="memberIds" multiple required>
+      <% users.forEach(user => { %>
+        <option value="<%= user._id %>"><%= user.name || user.email %></option>
+      <% }) %>
+    </select>
+    <button type="submit">Create Group</button>
+  </form>
+
+  <h3>Delete Group</h3>
+  <form action="/admin/groups/delete" method="POST">
+    <select name="groupId" required>
+      <% groups.forEach(group => { %>
+        <option value="<%= group._id %>"><%= group.name %></option>
+      <% }) %>
+    </select>
+    <button type="submit" style="background-color: #d9534f; color: white;">Delete Group</button>
+  </form>
 </body>
 </html>

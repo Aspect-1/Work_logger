@@ -4,10 +4,18 @@ const playlistSchema = new mongoose.Schema({
   title: String,
   playlistId: { type: String, required: true },
   assignedTo: {
-    type: String,
-    enum: ['all', 'user'],
-    default: 'all'
+  type: String,
+  enum: ['all', 'user', 'group'],
+  default: 'all'
+},
+  groupId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Group',
+    required: function () {
+      return this.assignedTo === 'group';
+    }
   },
+
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
