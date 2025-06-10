@@ -6,9 +6,9 @@
       table {
         border-collapse: collapse;
         width: 100%;
+        margin-bottom: 40px;
       }
-      th,
-      td {
+      th, td {
         border: 1px solid #ccc;
         padding: 8px;
         text-align: center;
@@ -16,38 +16,42 @@
       th {
         background-color: #f2f2f2;
       }
+      h3 {
+        margin-top: 40px;
+      }
     </style>
   </head>
   <body>
-    <h2>Admin - Employee Progress</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>User ID</th>
-          <th>Username</th>
-          <th>Active Time</th>
-          <th>Idle Time</th>
-          <th>Completed Videos</th>
-          <th>Total Videos</th>
-          <th>% Completion</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% users.forEach(user => { %>
-        <tr>
-          <td><%= user._id %></td>
-          <td><%= user.username %></td>
-          <td><%= user.activeTime || 0 %>s</td>
-          <td><%= user.idleTime || 0 %>s</td>
-          <td><%= user.completedVideos || 0 %></td>
-          <td><%= user.totalVideos || 0 %></td>
-          <td>
-            <%= user.totalVideos > 0 ? Math.round((user.completedVideos /
-            user.totalVideos) * 100) : 0 %>%
-          </td>
-        </tr>
-        <% }) %>
-      </tbody>
-    </table>
+    <h2>Admin - User Playlist Progress</h2>
+
+    <% groupedData.forEach(user => { %>
+      <h3>👤 <%= user.username %> (<%= user.userId %>)</h3>
+      <% if (user.playlists.length === 0) { %>
+        <p>No playlist data available.</p>
+      <% } else { %>
+        <table>
+          <thead>
+            <tr>
+              <th>Playlist Title</th>
+              <th>Completed Videos</th>
+              <th>Total Videos</th>
+              <th>Skipped Videos</th>
+              <th>Skipped Time (s)</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% user.playlists.forEach(p => { %>
+              <tr>
+                <td><%= p.playlistTitle %></td>
+                <td><%= p.completedCount %></td>
+                <td><%= p.totalVideos %></td>
+                <td><%= p.skippedVideos %></td>
+                <td><%= p.skippedSeconds %></td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      <% } %>
+    <% }) %>
   </body>
 </html>

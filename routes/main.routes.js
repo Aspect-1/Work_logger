@@ -73,42 +73,78 @@ router.post('/api/update-time', authMiddleware, async (req, res) => {
   const userId = new mongoose.Types.ObjectId(req.user.userid);
 
   try {
-    await User.findByIdAndUpdate(userId, {
-      activeTime,
-      idleTime
-    });
-
+    // ✅ Store everything inside UserPlaylistProgress only
     await UserPlaylistProgress.findOneAndUpdate(
       { userId, playlistId },
       {
         completedCount: completedVideos,
+        totalVideos: totalVideos,
         $inc: {
+          activeTime: activeTime || 0,
+          idleTime: idleTime || 0,
           skippedSeconds: skippedSeconds || 0,
-          skippedVideos: skippedVideo ? 1 : 0 // ✅ Conditional increment
+          skippedVideos: skippedVideo ? 1 : 0
         }
       },
       { upsert: true, new: true }
     );
 
-    res.status(200).json({ message: "Progress saved" });
+    res.status(200).json({ message: "Playlist progress saved" });
   } catch (err) {
     console.error("Update time error:", err);
-    res.status(500).json({ error: "Failed to update user progress" });
+    res.status(500).json({ error: "Failed to update progress" });
   }
 });
+
 
 
 
 // 📌 Admin - view users
 router.get('/admin', authMiddleware, adminMiddleware, async (req, res) => {
   try {
-    const users = await User.find({});
-    res.render('admin', { users });
+    const users = await User.find({}).lean();
+    const allPlaylists = await Playlist.find({}).lean();
+    const progressData = await UserPlaylistProgress.find({}).lean();
+
+    const grouped = {};
+
+    users.forEach(user => {
+      grouped[user._id] = {
+        username: user.username,
+        userId: user._id,
+        playlists: []
+      };
+    });
+
+    for (const progress of progressData) {
+      if (!progress.userId) continue; // ✅ Avoid crash on null userId
+
+      const userId = progress.userId.toString();
+      const playlistMeta = allPlaylists.find(p => p.playlistId === progress.playlistId);
+      const playlistTitle = playlistMeta ? playlistMeta.title : "(Unknown Playlist)";
+      const totalVideos = playlistMeta && playlistMeta.totalVideos !== undefined
+        ? playlistMeta.totalVideos
+        : 0;
+
+      if (!grouped[userId]) continue;
+
+      grouped[userId].playlists.push({
+        playlistTitle,
+        completedCount: progress.completedCount || 0,
+        skippedVideos: progress.skippedVideos || 0,
+        skippedSeconds: progress.skippedSeconds || 0,
+        totalVideos
+      });
+    }
+
+    res.render('admin', { groupedData: Object.values(grouped) });
+
   } catch (err) {
     console.error("Admin dashboard error:", err);
     res.status(500).send("Error loading admin panel");
   }
 });
+
 
 // 📌 Admin - manage playlists
 router.get('/admin/playlists', authMiddleware, adminMiddleware, async (req, res) => {

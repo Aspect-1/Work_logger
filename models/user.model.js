@@ -23,18 +23,6 @@ const userSchema = new mongoose.Schema({
         trim: true,
         minlength: [6, 'Password must be at least 6 characters long']
     },
-    activeTime: {
-        type: Number,
-        default: 0 
-    },
-    idleTime: {
-        type: Number,
-        default: 0
-    },
-    totalVideos: {
-        type: Number,
-        default: 0
-    },
     isAdmin: {
         type: Boolean,
         default: false

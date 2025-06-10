@@ -14,8 +14,13 @@ const playlistSchema = new mongoose.Schema({
     required: function () {
       return this.assignedTo === 'user';
     }
+  },
+  totalVideos: {
+    type: Number,
+    default: 0
   }
 });
+
 
 const Playlist = mongoose.model('Playlist', playlistSchema);
 
