@@ -18,6 +18,9 @@ let localActiveSeconds = 0;
 let localIdleSeconds = 0;
 let localTimerInterval = null;
 
+let cumulativeActive = initialActiveTime; // 🟢 'v' for active
+let cumulativeIdle = initialIdleTime;     // ⚪ 'v' for idle
+
 window.isFaceDetected = false;
 
 async function fetchPlaylistVideos() {
@@ -99,7 +102,7 @@ function loadVideo(videoId) {
     player = new YT.Player(iframe, {
       events: {
         onReady: (event) => {
-          currentVideoLength = event.target.getDuration(); // ✅ capture duration
+          currentVideoLength = event.target.getDuration();
         },
         onStateChange: (event) => {
           switch (event.data) {
@@ -114,7 +117,7 @@ function loadVideo(videoId) {
                 const skipped = Math.max(0, currentVideoLength - watchedTime);
                 const isSkippedVideo = skipped > 0;
 
-                sendTimeUpdate(skipped, isSkippedVideo); // ✅ send skipped data
+                sendTimeUpdate(skipped, isSkippedVideo);
                 markCompleted(videoId);
               }
               break;
@@ -147,6 +150,42 @@ function startLocalTimer() {
 function stopLocalTimer() {
   clearInterval(localTimerInterval);
   localTimerInterval = null;
+}
+
+function sendTimeUpdate(skippedSeconds = 0, isSkippedVideo = false) {
+  const activeText = document.getElementById("active-time")?.textContent || "0s";
+  const idleText = document.getElementById("idle-time")?.textContent || "0s";
+
+  const currentDomActive = parseInt(activeText.replace("s", "")) || 0;
+  const currentDomIdle = parseInt(idleText.replace("s", "")) || 0;
+
+  const newActive = currentDomActive - cumulativeActive;
+  const newIdle = currentDomIdle - cumulativeIdle;
+
+  if (newActive <= 0 && newIdle <= 0) return;
+
+  cumulativeActive = currentDomActive;
+  cumulativeIdle = currentDomIdle;
+
+  const completed = previouslyCompleted + completedVideos.size;
+  const total = allVideos.length;
+
+  fetch("/api/update-time", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({
+      activeTime: newActive,
+      idleTime: newIdle,
+      completedVideos: completed,
+      totalVideos: total,
+      playlistId,
+      skippedSeconds,
+      skippedVideo: isSkippedVideo
+    }),
+  })
+    .then((res) => res.json())
+    .catch(console.error);
 }
 
 function markCompleted(videoId) {
@@ -216,33 +255,9 @@ function convertDuration(isoDuration) {
     : `${minutes}:${String(seconds).padStart(2, "0")}`;
 }
 
-function sendTimeUpdate(skippedSeconds = 0, isSkippedVideo = false) {
-  const active = localActiveSeconds + initialActiveTime;
-  const idle = localIdleSeconds + initialIdleTime;
-  const completed = previouslyCompleted + completedVideos.size;
-  const total = allVideos.length;
-
-  fetch("/api/update-time", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "include",
-    body: JSON.stringify({
-      activeTime: active,
-      idleTime: idle,
-      completedVideos: completed,
-      totalVideos: total,
-      playlistId,
-      skippedSeconds,
-      skippedVideo: isSkippedVideo
-    }),
-  })
-    .then((res) => res.json())
-    .catch(console.error);
-}
-
-// Auto-save time every 10 seconds (skippedSeconds = 0)
+// Optional auto sync every 15s to catch page-level idle time
 setInterval(() => {
   sendTimeUpdate(0, false);
-}, 10000);
+}, 15000);
 
 fetchPlaylistVideos();
