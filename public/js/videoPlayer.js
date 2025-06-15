@@ -57,9 +57,9 @@ async function fetchPlaylistVideos() {
       `;
 
       if (index < previouslyCompleted) {
-        card.style.borderLeft = "5px solid green";
-        card.style.backgroundColor = "#e8f5e9";
-      }
+  card.classList.add("completed");
+}
+
 
       if (index <= previouslyCompleted) {
         card.onclick = () => loadVideo(videoId);
@@ -193,9 +193,9 @@ function markCompleted(videoId) {
     completedVideos.add(videoId);
     const card = document.getElementById(`video-${videoId}`);
     if (card) {
-      card.style.borderLeft = "5px solid green";
-      card.style.backgroundColor = "#e8f5e9";
-    }
+  card.classList.add("completed");
+}
+
 
     const index = allVideos.findIndex(
       (v) => v.snippet.resourceId.videoId === videoId

@@ -1,27 +1,11 @@
 <!DOCTYPE html>
 <html>
-  <head>
-    <title>Admin Dashboard</title>
-    <style>
-      table {
-        border-collapse: collapse;
-        width: 100%;
-        margin-bottom: 40px;
-      }
-      th, td {
-        border: 1px solid #ccc;
-        padding: 8px;
-        text-align: center;
-      }
-      th {
-        background-color: #f2f2f2;
-      }
-      h3 {
-        margin-top: 40px;
-      }
-    </style>
-  </head>
-  <body>
+<head>
+  <title>Admin Dashboard</title>
+  <link rel="stylesheet" href="/style/admin.css" />
+</head>
+<body>
+  <div class="admin-wrapper">
     <h2>Admin - User Playlist Progress</h2>
 
     <% groupedData.forEach(user => { %>
@@ -53,5 +37,6 @@
         </table>
       <% } %>
     <% }) %>
-  </body>
+  </div>
+</body>
 </html>

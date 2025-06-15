@@ -5,15 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Employee Login</title>
   <link rel="stylesheet" href="/style/style.css" />
-    <link rel="stylesheet" href="/style/com.css" />
+  <link rel="stylesheet" href="/style/com.css" />
 </head>
 <body>
+
+  <!-- Place alert immediately after body starts -->
   <% if (typeof message !== 'undefined') { %>
-  <div class="floating-alert" id="alert-msg"><%= message %></div>
-<% } %>
+    <div class="floating-alert" id="alert-msg"><%= message %></div>
+  <% } %>
 
   <div class="wrapper">
-
     <div class="login-container">
       <h2>Login</h2>
       <form action="/user/login" method="POST" id="loginForm">
@@ -23,19 +24,19 @@
       </form>
       <p>Don't have an account? <a href="/user/signup">Signup here</a></p>
     </div>
-    
   </div>
-  <script>
-  const alertBox = document.getElementById('alert-msg');
-  if (alertBox) {
-    setTimeout(() => {
-      alertBox.style.opacity = '0';
-    }, 2000); // Fade after 2 seconds
-    setTimeout(() => {
-      alertBox.remove();
-    }, 3000); // Fully remove after 3 seconds
-  }
-</script>
 
-  </body>
+  <script>
+    const alertBox = document.getElementById('alert-msg');
+    if (alertBox) {
+      setTimeout(() => {
+        alertBox.style.opacity = '0';
+      }, 2000);
+      setTimeout(() => {
+        alertBox.remove();
+      }, 3000);
+    }
+  </script>
+
+</body>
 </html>

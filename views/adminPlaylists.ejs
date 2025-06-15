@@ -1,97 +1,88 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Admin Playlist Manager</title>
-  <style>
-    body { font-family: sans-serif; padding: 20px; background-color: #f9fafb; max-width: 900px; margin: auto; }
-    h2, h3 { color: #333; margin-top: 30px; }
-    ul { background: #fff; border: 1px solid #ddd; border-radius: 8px; padding: 15px; list-style: none; }
-    li { padding: 8px 0; border-bottom: 1px solid #eee; }
-    li:last-child { border-bottom: none; }
-    form { margin-top: 20px; padding: 20px; background: #fff; border: 1px solid #ddd; border-radius: 10px; }
-    input, select, button { padding: 10px; margin: 5px 0; width: 100%; max-width: 400px; }
-    button { background-color: #4a90e2; color: white; border: none; cursor: pointer; }
-    button:hover { background-color: #357abd; }
-    .group-members { font-size: 0.9rem; color: #666; margin-top: 5px; }
-  </style>
+  <link rel="stylesheet" href="/style/adminPlaylists.css" />
 </head>
 <body>
-  <h2>Admin Playlist Manager</h2>
+  <div class="admin-wrapper">
+    <h2>Admin Playlist Manager</h2>
 
-  <% if (groupedPlaylists['all']) { %>
-    <h3>Global Playlists</h3>
-    <ul>
-      <% groupedPlaylists['all'].forEach(p => { %>
-        <li><%= p.title %> (Playlist ID: <%= p.playlistId %>)</li>
-      <% }) %>
-    </ul>
-  <% } %>
+    <% if (groupedPlaylists['all']) { %>
+      <h3>Global Playlists</h3>
+      <ul>
+        <% groupedPlaylists['all'].forEach(p => { %>
+          <li><%= p.title %> (Playlist ID: <%= p.playlistId %>)</li>
+        <% }) %>
+      </ul>
+    <% } %>
 
-  <% users.forEach(user => { %>
-    <h3>Playlists for <%= user.name || user.email %></h3>
-    <ul>
-      <% (groupedPlaylists[user._id] || []).forEach(p => { %>
-        <li><%= p.title %> (Playlist ID: <%= p.playlistId %>)</li>
-      <% }) %>
-    </ul>
-  <% }) %>
+    <% users.forEach(user => { %>
+      <h3>Playlists for <%= user.name || user.email %></h3>
+      <ul>
+        <% (groupedPlaylists[user._id] || []).forEach(p => { %>
+          <li><%= p.title %> (Playlist ID: <%= p.playlistId %>)</li>
+        <% }) %>
+      </ul>
+    <% }) %>
 
-  <% groups.forEach(group => { %>
-    <h3>Playlists for Group: <%= group.name %></h3>
-    <div class="group-members">
-      Members: <%= group.members.map(m => m.name || m.email).join(", ") %>
-    </div>
-    <ul>
-      <% (groupedPlaylists[group._id] || []).forEach(p => { %>
-        <li><%= p.title %> (Playlist ID: <%= p.playlistId %>)</li>
-      <% }) %>
-    </ul>
-  <% }) %>
+    <% groups.forEach(group => { %>
+      <h3>Playlists for Group: <%= group.name %></h3>
+      <div class="group-members">
+        Members: <%= group.members.map(m => m.name || m.email).join(", ") %>
+      </div>
+      <ul>
+        <% (groupedPlaylists[group._id] || []).forEach(p => { %>
+          <li><%= p.title %> (Playlist ID: <%= p.playlistId %>)</li>
+        <% }) %>
+      </ul>
+    <% }) %>
 
-  <h3>Add New Playlist</h3>
-  <form action="/admin/playlists" method="POST">
-    <input name="title" placeholder="Playlist Title" required />
-    <input name="playlistId" placeholder="YouTube Playlist ID" required />
-    <select name="assignedTo" required>
-      <option value="all">All Users</option>
-      <% users.forEach(user => { %>
-        <option value="<%= user._id %>"><%= user.name || user.email %></option>
-      <% }) %>
-      <option disabled>──────────</option>
-      <% groups.forEach(group => { %>
-        <option value="<%= group._id %>">[Group] <%= group.name %></option>
-      <% }) %>
-    </select>
-    <button type="submit">Add Playlist</button>
-  </form>
+    <h3>Add New Playlist</h3>
+    <form action="/admin/playlists" method="POST">
+      <input name="title" placeholder="Playlist Title" required />
+      <input name="playlistId" placeholder="YouTube Playlist ID" required />
+      <select name="assignedTo" required>
+        <option value="all">All Users</option>
+        <% users.forEach(user => { %>
+          <option value="<%= user._id %>"><%= user.name || user.email %></option>
+        <% }) %>
+        <option disabled>──────────</option>
+        <% groups.forEach(group => { %>
+          <option value="<%= group._id %>">[Group] <%= group.name %></option>
+        <% }) %>
+      </select>
+      <button type="submit">Add Playlist</button>
+    </form>
 
-  <h3>Delete Playlist</h3>
-  <form action="/admin/playlists/delete" method="POST">
-    <input name="playlistId" placeholder="YouTube Playlist ID to delete" required />
-    <button type="submit" style="background-color: #d9534f; color: white;">Delete Playlist</button>
-  </form>
+    <h3>Delete Playlist</h3>
+    <form action="/admin/playlists/delete" method="POST">
+      <input name="playlistId" placeholder="YouTube Playlist ID to delete" required />
+      <button type="submit" class="danger-btn">Delete Playlist</button>
+    </form>
 
-  <h3>Create New Group</h3>
-  <form action="/admin/groups" method="POST">
-    <input name="groupName" placeholder="Group Name" required />
-    <label>Select Members:</label>
-    <select name="memberIds" multiple required>
-      <% users.forEach(user => { %>
-        <option value="<%= user._id %>"><%= user.name || user.email %></option>
-      <% }) %>
-    </select>
-    <button type="submit">Create Group</button>
-  </form>
+    <h3>Create New Group</h3>
+    <form action="/admin/groups" method="POST">
+      <input name="groupName" placeholder="Group Name" required />
+      <label>Select Members:</label>
+      <select name="memberIds" multiple required>
+        <% users.forEach(user => { %>
+          <option value="<%= user._id %>"><%= user.name || user.email %></option>
+        <% }) %>
+      </select>
+      <button type="submit">Create Group</button>
+    </form>
 
-  <h3>Delete Group</h3>
-  <form action="/admin/groups/delete" method="POST">
-    <select name="groupId" required>
-      <% groups.forEach(group => { %>
-        <option value="<%= group._id %>"><%= group.name %></option>
-      <% }) %>
-    </select>
-    <button type="submit" style="background-color: #d9534f; color: white;">Delete Group</button>
-  </form>
+    <h3>Delete Group</h3>
+    <form action="/admin/groups/delete" method="POST">
+      <select name="groupId" required>
+        <% groups.forEach(group => { %>
+          <option value="<%= group._id %>"><%= group.name %></option>
+        <% }) %>
+      </select>
+      <button type="submit" class="danger-btn">Delete Group</button>
+    </form>
+  </div>
 </body>
 </html>
